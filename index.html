@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DulceAdmin — Gatosauriocrack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0f14; --surface: #141720; --surface2: #1c2030; --border: #252a3a;
+      --accent: #f7c94b; --accent2: #ff6b6b; --accent3: #6effc5;
+      --text: #e8eaf2; --muted: #6b7394;
+      --font-head: 'Syne', sans-serif; --font-mono: 'DM Mono', monospace;
+      --radius: 12px; --transition: 0.22s cubic-bezier(.4,0,.2,1);
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 14px; min-height: 100vh; overflow-x: hidden; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+    
+    .app { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 32px 0; border-bottom: 1px solid var(--border); margin-bottom: 40px; }
+    .logo-name { font-family: var(--font-head); font-size: 24px; font-weight: 800; }
+    
+    .section-label { font-family: var(--font-head); font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin: 30px 0 15px; display: flex; align-items: center; gap: 10px; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .card-label { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+    .card-value { font-family: var(--font-head); font-size: 28px; font-weight: 700; }
+
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    th { padding: 12px 20px; text-align: left; font-size: 10px; color: var(--muted); border-bottom: 1px solid var(--border); }
+    td { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+    .qty-input { width: 50px; background: var(--surface2); border: 1px solid var(--border); color: #fff; padding: 4px; border-radius: 4px; text-align: center; }
+
+    .btn { cursor: pointer; border: none; border-radius: 8px; font-family: var(--font-head); font-weight: 700; padding: 10px 16px; transition: 0.2s; font-size: 12px; }
+    .btn-accent { background: var(--accent); color: #000; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-danger { background: rgba(255,107,107,0.1); color: var(--accent2); border: 1px solid var(--accent2); }
+
+    .admin-panel { position: fixed; right: -400px; top: 0; width: 380px; height: 100%; background: var(--surface); border-left: 1px solid var(--border); z-index: 1000; padding: 30px; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
+    .admin-panel.open { right: 0; }
+    .admin-input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-family: var(--font-mono); }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 2000; display: none; align-items: center; justify-content: center; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--surface); padding: 30px; border-radius: 16px; width: 90%; max-width: 450px; border: 1px solid var(--border); }
+
+    #toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--accent); opacity: 0; transition: 0.3s; pointer-events: none; z-index: 3000; }
+    .show { opacity: 1 !important; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="logo-name">🍬 DulceAdmin</div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-outline" onclick="toggleAdmin()">⚙️ Configurar</button>
+        <button class="btn btn-accent" onclick="App.openCorte()">📋 Corte</button>
+    </div>
+  </header>
+
+  <div class="cards-grid">
+    <div class="card"><div class="card-label">Ventas</div><div class="card-value" style="color:var(--accent)" id="v-ingresos">$0</div></div>
+    <div class="card"><div class="card-label">Inversión</div><div class="card-value" id="v-inversion">$0</div></div>
+    <div class="card"><div class="card-label">Ganancia</div><div class="card-value" style="color:var(--accent3)" id="v-ganancia">$0</div></div>
+  </div>
+
+  <div class="section-label">Mercancía para Venta</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Venta</th><th>Acción</th></tr></thead>
+      <tbody id="v-inventory"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="admin-panel" id="adminPanel">
+  <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <h2 style="font-family:var(--font-head)">Configuración</h2>
+    <button class="btn btn-danger" onclick="toggleAdmin()">X</button>
+  </div>
+
+  <div class="section-label">Socios y Aportes</div>
+  <div id="admin-socios"></div>
+  <div style="background:var(--surface2); padding:15px; border-radius:8px; margin-top:10px;">
+    <input type="text" id="new-socio-name" class="admin-input" placeholder="Nombre del socio">
+    <input type="number" id="new-socio-money" class="admin-input" placeholder="Aportación $">
+    <button class="btn btn-accent" style="width:100%" onclick="Config.addSocio()">+ Agregar Socio</button>
+  </div>
+
+  <div class="section-label">Inventario</div>
+  <div id="admin-productos"></div>
+  <div style="background:var(--surface2); padding:15px; border-radius:8px; margin-top:10px;">
+    <input type="text" id="new-p-name" class="admin-input" placeholder="Nombre Producto (ej: Mazapán)">
+    <input type="text" id="new-p-emoji" class="admin-input" placeholder="Icono (ej: 🍬)">
+    <input type="number" id="new-p-stock" class="admin-input" placeholder="Cantidad Inicial">
+    <input type="number" id="new-p-price" class="admin-input" placeholder="Precio Venta $">
+    <button class="btn btn-accent" style="width:100%" onclick="Config.addProduct()">+ Agregar Producto</button>
+  </div>
+  
+  <button class="btn btn-danger" style="width:100%; margin-top:40px; opacity:0.5" onclick="App.resetAll()">⚠️ Borrar Todo el JSON</button>
+</div>
+
+<div class="modal-backdrop" id="modalCorte">
+  <div class="modal">
+    <h2 style="font-family:var(--font-head); margin-bottom:20px;">Corte de Caja</h2>
+    <div id="corte-results"></div>
+    <button class="btn btn-accent" style="width:100%; margin-top:20px;" onclick="App.closeCorte()">Entendido</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ESTADO INICIAL VACÍO (Data JSON)
+let DB = JSON.parse(localStorage.getItem("dulce_json")) || { socios: [], productos: [] };
+
+const App = {
+  save: () => {
+    localStorage.setItem("dulce_json", JSON.stringify(DB));
+    UI.refresh();
+  },
+
+  vender(id) {
+    const p = DB.productos.find(x => x.id === id);
+    const input = document.getElementById(`qty-${id}`);
+    const cant = parseInt(input.value);
+    if(cant > 0 && (p.stock - p.vendidos) >= cant) {
+        p.vendidos += cant;
+        this.save();
+        showToast("¡Venta exitosa!");
+    } else {
+        showToast("Stock insuficiente", "error");
+    }
+  },
+
+  openCorte() {
+    const ingresos = DB.productos.reduce((s, p) => s + (p.vendidos * p.precio), 0);
+    const inversion = DB.socios.reduce((s, x) => s + x.aporte, 0);
+    const ganancia = ingresos - inversion;
+    const porSocio = DB.socios.length > 0 ? (ganancia / DB.socios.length).toFixed(2) : 0;
+
+    let html = `
+        <p>Ingresos: <b>$${ingresos}</b></p>
+        <p>Inversión: <b>$${inversion}</b></p>
+        <p style="color:var(--accent3)">Ganancia Neta: <b>$${ganancia}</b></p>
+        <hr style="margin:15px 0; border:0; border-top:1px solid var(--border)">
+        <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">REPARTO EQUITATIVO:</p>
+    `;
+    
+    DB.socios.forEach(s => {
+        html += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+            <span>${s.nombre}</span> <b style="color:var(--accent3)">$${ganancia > 0 ? porSocio : 0}</b>
+        </div>`;
+    });
+
+    document.getElementById("corte-results").innerHTML = html;
+    document.getElementById("modalCorte").classList.add("open");
+  },
+
+  closeCorte: () => document.getElementById("modalCorte").classList.remove("open"),
+
+  resetAll() {
+    if(confirm("¿Estás seguro? Se borrarán todos los socios y productos.")) {
+        localStorage.clear();
+        location.reload();
+    }
+  }
+};
+
+const Config = {
+  addSocio() {
+    const name = document.getElementById("new-socio-name").value;
+    const money = parseFloat(document.getElementById("new-socio-money").value);
+    if(name && money >= 0) {
+        DB.socios.push({ id: Date.now(), nombre: name, aporte: money });
+        document.getElementById("new-socio-name").value = "";
+        document.getElementById("new-socio-money").value = "";
+        App.save();
+    }
+  },
+
+  removeSocio(id) {
+    DB.socios = DB.socios.filter(s => s.id !== id);
+    App.save();
+  },
+
+  addProduct() {
+    const name = document.getElementById("new-p-name").value;
+    const emoji = document.getElementById("new-p-emoji").value || "🍬";
+    const stock = parseInt(document.getElementById("new-p-stock").value);
+    const price = parseFloat(document.getElementById("new-p-price").value);
+    if(name && stock >= 0 && price >= 0) {
+        DB.productos.push({ id: Date.now(), nombre: name, emoji, stock, precio: price, vendidos: 0 });
+        document.getElementById("new-p-name").value = "";
+        document.getElementById("new-p-stock").value = "";
+        document.getElementById("new-p-price").value = "";
+        App.save();
+    }
+  },
+
+  removeProduct(id) {
+    DB.productos = DB.productos.filter(p => p.id !== id);
+    App.save();
+  }
+};
+
+const UI = {
+  refresh() {
+    const ingresos = DB.productos.reduce((s, p) => s + (p.vendidos * p.precio), 0);
+    const inversion = DB.socios.reduce((s, x) => s + x.aporte, 0);
+
+    document.getElementById("v-ingresos").textContent = `$${ingresos}`;
+    document.getElementById("v-inversion").textContent = `$${inversion}`;
+    document.getElementById("v-ganancia").textContent = `$${ingresos - inversion}`;
+
+    // Render Tabla Venta
+    const table = document.getElementById("v-inventory");
+    table.innerHTML = "";
+    DB.productos.forEach(p => {
+        const rest = p.stock - p.vendidos;
+        table.innerHTML += `
+            <tr>
+                <td>${p.emoji} ${p.nombre}</td>
+                <td>$${p.precio}</td>
+                <td><span style="color:${rest < 5 ? 'var(--accent2)' : 'var(--accent3)'}">${rest}</span></td>
+                <td><input type="number" id="qty-${p.id}" class="qty-input" value="1" min="1"></td>
+                <td><button class="btn btn-accent" onclick="App.vender(${p.id})">Vender</button></td>
+            </tr>
+        `;
+    });
+
+    // Render Admin Socios
+    const adSocios = document.getElementById("admin-socios");
+    adSocios.innerHTML = "";
+    DB.socios.forEach(s => {
+        adSocios.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:10px; border-radius:6px; margin-bottom:5px;">
+                <span>${s.nombre} ($${s.aporte})</span>
+                <button onclick="Config.removeSocio(${s.id})" style="background:none; border:none; color:var(--accent2); cursor:pointer">✕</button>
+            </div>
+        `;
+    });
+
+    // Render Admin Productos
+    const adProd = document.getElementById("admin-productos");
+    adProd.innerHTML = "";
+    DB.productos.forEach(p => {
+        adProd.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:10px; border-radius:6px; margin-bottom:5px;">
+                <span>${p.emoji} ${p.nombre} (${p.stock} pz)</span>
+                <button onclick="Config.removeProduct(${p.id})" style="background:none; border:none; color:var(--accent2); cursor:pointer">✕</button>
+            </div>
+        `;
+    });
+  }
+};
+
+function toggleAdmin() { document.getElementById("adminPanel").classList.toggle("open"); }
+
+function showToast(msg, type = "success") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.style.borderColor = type === "error" ? "var(--accent2)" : "var(--accent)";
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2000);
+}
+
+document.addEventListener("DOMContentLoaded", UI.refresh);
+</script>
+
+</body>
+</html>
