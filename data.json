@@ -1,4 +1,20 @@
 {
   "productos": [],
-  "socios": []
+  "socios": [
+    {
+      "aporte": 300,
+      "id": 1777576870979,
+      "nombre": "Andrik"
+    },
+    {
+      "aporte": 300,
+      "id": 1777576880045,
+      "nombre": "Brayan"
+    },
+    {
+      "aporte": 300,
+      "id": 1777576887307,
+      "nombre": "Mateo "
+    }
+  ]
 }
