@@ -1,1 +1,4 @@
-"{\n  \"socios\": [],\n  \"productos\": [\n    {\n      \"id\": 1777566291669,\n      \"nombre\": \"papitas\",\n      \"stock\": 5,\n      \"precio\": 20,\n      \"vendidos\": 0\n    }\n  ]\n}"
+{
+  "socios": [],
+  "productos": []
+}
