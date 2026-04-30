@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Venta — Gatosauriocrack</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,7 +16,7 @@
 
 <div class="top-bar">
     <button class="burger-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
-    <span class="icon-meli-icono"></span>
+    <span class="icon-meli-icono" style="font-size: 20px; margin-right: 10px;"></span>
     <div class="top-title">Ventas</div>
 </div>
 
@@ -23,23 +24,48 @@
 
 <nav class="sidebar" id="sidebar">
     <div class="sidebar-brand">Opciones</div>
+    
     <div class="nav-link" onclick="showPage('panel')"><i class="fa-solid fa-chart-pie"></i> Ventas</div>
     <div class="nav-link" onclick="showPage('inventario')"><i class="fa-solid fa-box-open"></i> Inventario</div>
     <div class="nav-link" onclick="showPage('socios')"><i class="fa-solid fa-users"></i> Socios</div>
+    
+    <div class="nav-link" onclick="exportPDF()" style="color:var(--accent3)">
+        <i class="fa-solid fa-file-pdf"></i> Generar Reporte
+    </div>
+
     <div class="nav-link" onclick="showPage('config')"><i class="fa-solid fa-gears"></i> Ajustes</div>
+    
     <div style="margin-top:auto">
-        <div class="nav-link" style="color:var(--accent2)" onclick="location.reload()"><i class="fa-solid fa-power-off"></i> Salir</div>
+        <div id="status-container">
+            <i id="status-icon" class="fa-solid fa-circle-nodes"></i>
+            <span id="status-text" style="font-size: 10px; font-weight: 800; text-transform: uppercase;">Cargando...</span>
+        </div>
+        
+        <div class="nav-link" style="color:var(--accent2)" onclick="location.reload()">
+            <i class="fa-solid fa-power-off"></i> Salir
+        </div>
     </div>
 </nav>
 
 <div class="app">
     <div id="page-panel" class="page active">
+        <h2 class="page-title">Resumen Financiero</h2>
+
         <div class="cards-grid">
             <div class="card"><div class="card-label">Ventas</div><div class="card-value" style="color:var(--accent)" id="v-ingresos">$0</div></div>
             <div class="card"><div class="card-label">Costo</div><div class="card-value" id="v-inversion">$0</div></div>
             <div class="card"><div class="card-label">Ganancia</div><div class="card-value" style="color:var(--accent3)" id="v-ganancia">$0</div></div>
         </div>
-        <div class="chart-box"><canvas id="mainChart"></canvas></div>
+
+        <div class="chart-box">
+            <div class="chart-controls">
+                <button class="btn" onclick="UI.setChartType('bar')"><i class="fa-solid fa-chart-column"></i></button>
+                <button class="btn" onclick="UI.setChartType('bar-h')"><i class="fa-solid fa-chart-bar"></i></button>
+                <button class="btn" onclick="UI.setChartType('pie')"><i class="fa-solid fa-chart-pie"></i></button>
+            </div>
+            <canvas id="mainChart"></canvas>
+        </div>
+
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Cant</th><th>Vender</th></tr></thead>
@@ -49,18 +75,20 @@
     </div>
 
     <div id="page-inventario" class="page">
-        <h2 class="page-title">Gestión</h2>
+        <h2 class="page-title">Gestión de Dulces</h2>
         <div class="form-container">
             <input type="text" id="new-p-name" class="admin-input" placeholder="Nombre del producto">
-            <input type="number" id="new-p-stock" class="admin-input" placeholder="Cantidad inicial">
-            <input type="number" id="new-p-price" class="admin-input" placeholder="Precio de venta">
-            <button class="btn btn-accent" style="width:100%" onclick="Config.addProduct()"><i class="fa-solid fa-plus"></i> Guardar Producto</button>
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="new-p-stock" class="admin-input" placeholder="Stock">
+                <input type="number" id="new-p-price" class="admin-input" placeholder="Precio">
+            </div>
+            <button class="btn btn-accent" style="width:100%" onclick="Config.addProduct()"><i class="fa-solid fa-plus"></i> Guardar en Lista</button>
         </div>
         <div id="admin-productos-list"></div>
     </div>
 
     <div id="page-socios" class="page">
-        <h2 class="page-title">Capital</h2>
+        <h2 class="page-title">Capital de Socios</h2>
         <div class="form-container">
             <input type="text" id="new-socio-name" class="admin-input" placeholder="Nombre del socio">
             <input type="number" id="new-socio-money" class="admin-input" placeholder="Monto aportado">
@@ -70,9 +98,14 @@
     </div>
 
     <div id="page-config" class="page">
-        <h2 class="page-title">GitHub Sync</h2>
-        <input type="password" id="gh-token" class="admin-input" placeholder="Personal Access Token">
-        <button class="btn btn-accent" style="width:100%" onclick="App.save()"><i class="fa-solid fa-cloud-arrow-up"></i> Forzar Sincronización</button>
+        <h2 class="page-title">Configuración de Nube</h2>
+        <div class="form-container">
+            <span class="admin-item-label">GitHub Token</span>
+            <input type="password" id="gh-token" class="admin-input" placeholder="ghp_xxxxxxxxxxxx">
+            <button class="btn btn-accent" style="width:100%" onclick="App.save()">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Cambios
+            </button>
+        </div>
         
         <div class="terminal-container">
             <div class="terminal-header">
@@ -82,7 +115,7 @@
                 <span class="terminal-title">CONSOLE — GITHUB STATUS</span>
             </div>
             <div class="terminal-body" id="terminal">
-                <div><span class="log-info">Terminal lista. Esperando acciones...</span></div>
+                <div><span class="log-info">Sistema listo...</span></div>
             </div>
         </div>
     </div>
