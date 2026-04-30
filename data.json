@@ -1,5 +1,34 @@
 {
-  "productos": [],
+  "productos": [
+    {
+      "id": 1777576987404,
+      "nombre": "Papas",
+      "precio": 20,
+      "stock": 50,
+      "vendidos": 0
+    },
+    {
+      "id": 1777577000297,
+      "nombre": "Gomitas ",
+      "precio": 10,
+      "stock": 50,
+      "vendidos": 0
+    },
+    {
+      "id": 1777577016262,
+      "nombre": "Chetos de queso",
+      "precio": 15,
+      "stock": 50,
+      "vendidos": 0
+    },
+    {
+      "id": 1777577031124,
+      "nombre": "Pelón rico",
+      "precio": 8,
+      "stock": 20,
+      "vendidos": 0
+    }
+  ],
   "socios": [
     {
       "aporte": 300,
