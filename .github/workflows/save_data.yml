@@ -2,7 +2,7 @@ name: Actualizar Base de Datos Traficodedulces
 
 on:
   repository_dispatch:
-    types: [update_db]
+    types: [update_db, update_compras]
 
 jobs:
   update:
@@ -16,21 +16,52 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Escribir JSON
+      - name: Procesar Datos y Reparar Archivos
         run: |
-          echo '${{ toJson(github.event.client_payload.json_data) }}' > data.json
+          # Configurar identidad del bot
+          git config --local user.name "Ventas Bot"
+          git config --local user.email "action@github.com"
+
+          # Determinar qué archivo actualizar según el evento
+          if [ "${{ github.event.action }}" == "update_db" ]; then
+            FILE="data.json"
+            # Estructura base por si el archivo no existe
+            DEFAULT_DATA='{"socios": [], "productos": []}'
+          else
+            FILE="compras.json"
+            DEFAULT_DATA='{"compras": []}'
+          fi
+
+          # 1. Reparación: Si el archivo no existe, crearlo con base limpia
+          if [ ! -f "$FILE" ]; then
+            echo "Archivo $FILE no encontrado. Creando estructura base..."
+            echo "$DEFAULT_DATA" > "$FILE"
+          fi
+
+          # 2. Escribir nuevos datos
+          # Usamos un archivo temporal para validar que el JSON sea válido antes de sobrescribir
+          echo '${{ toJson(github.event.client_payload.json_data) }}' > temp_$FILE
           
+          # 3. Validación: Si el archivo temporal está vacío o no es JSON válido, no sobreescribir
+          if [ -s temp_$FILE ]; then
+            mv temp_$FILE $FILE
+            echo "Sincronización de $FILE lista."
+          else
+            echo "Error: Los datos recibidos están vacíos. Abortando para proteger la base de datos."
+            exit 1
+          fi
+
       - name: Commit y Push con Reintento
         run: |
-          git config --local user.name "Meli Admin Bot"
-          git config --local user.email "action@github.com"
-          
-          git add data.json
+          git add data.json compras.json
           
           if ! git diff --cached --quiet; then
-            git commit -m "Admin: Actualización de inventario automática"
-            git pull --rebase origin main
-            git push
+            git commit -m "Sistema: Sincronización automática de datos [Skip CI]"
+            
+            # Reintento de Push en caso de colisión de datos
+            for i in {1..5}; do
+              git pull --rebase origin main && git push && break || sleep 5
+            done
           else
-            echo "Sin cambios detectados."
+            echo "Sin cambios detectados en los archivos JSON."
           fi
