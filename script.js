@@ -1,12 +1,18 @@
 let DB = { socios: [], productos: [] };
+let COMPRAS_DB = { compras: [] };
 let REMOTE_DB = { socios: [], productos: [] };
 let PENDING_CHANGES = false;
 let chart;
+
 const CONFIG = {
     owner: "Gatosauriocrack",
     repo: "Finanzas.Gatosauriocrackworl.com",
     token_key: "gh_dulce_token",
-    refresh_interval: 30000 
+    refresh_interval: 30000,
+    files: {
+        ventas: "data.json",
+        compras: "compras.json"
+    }
 };
 
 function log(msg, type = 'info') {
@@ -28,13 +34,11 @@ function updateStatusIcon(status) {
         icon.className = 'fa-solid fa-signal';
         icon.style.color = 'var(--accent3)';
         text.textContent = 'En Línea';
-        text.style.color = 'var(--accent3)';
         container.style.borderColor = 'var(--accent3)';
     } else {
         icon.className = 'fa-solid fa-circle-nodes';
         icon.style.color = '#666';
         text.textContent = 'Modo Local';
-        text.style.color = 'var(--muted)';
         container.style.borderColor = 'var(--border)';
     }
 }
@@ -45,7 +49,7 @@ async function exportPDF() {
     if (document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
     const opt = {
         margin: 10,
-        filename: 'Reporte_Gatosaurio.pdf',
+        filename: 'Reporte_Ventas Grupal.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, backgroundColor: '#0d0f14' },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -59,46 +63,29 @@ async function exportSocioTicket(socioId) {
     const socio = DB.socios.find(s => s.id === socioId);
     if (!socio) return;
     const ticketEl = document.createElement('div');
-    ticketEl.style.padding = '20px';
-    ticketEl.style.background = '#fff';
-    ticketEl.style.color = '#000';
-    ticketEl.style.fontFamily = 'monospace';
-    ticketEl.style.width = '80mm';
+    ticketEl.style.padding = '20px'; ticketEl.style.background = '#fff'; ticketEl.style.color = '#000';
+    ticketEl.style.fontFamily = 'monospace'; ticketEl.style.width = '80mm';
     ticketEl.innerHTML = `
         <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
-            <h2 style="margin: 0;">GATOSAURIOCRACK</h2>
+            <h2 style="margin: 0;">CONTROL DE VENTAS</h2>
             <p style="font-size: 12px; margin: 5px 0;">Comprobante de Aportación</p>
         </div>
-        <div style="margin-bottom: 10px;">
+        <div>
             <p><strong>FECHA:</strong> ${new Date().toLocaleDateString()}</p>
             <p><strong>SOCIO:</strong> ${socio.nombre.toUpperCase()}</p>
-            <p><strong>ID:</strong> ${socio.id}</p>
         </div>
-        <div style="border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
+        <div style="border-bottom: 1px dashed #000; padding: 10px 0; margin: 10px 0;">
             <div style="display: flex; justify-content: space-between;">
-                <span>DESCRIPCIÓN</span>
-                <span>MONTO</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-                <span>Aporte de Capital</span>
+                <span>Aporte Capital</span>
                 <span>$${socio.aporte}</span>
             </div>
         </div>
-        <div style="text-align: right; font-size: 18px;">
-            <strong>TOTAL: $${socio.aporte}</strong>
-        </div>
-        <div style="text-align: center; margin-top: 20px; font-size: 10px;">
-            <p>Gracias por confiar en el proyecto.</p>
-        </div>
+        <div style="text-align: right; font-size: 18px;"><strong>TOTAL: $${socio.aporte}</strong></div>
     `;
     const opt = {
-        margin: 5,
-        filename: `Ticket_${socio.nombre}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 3 },
+        margin: 5, filename: `Ticket_${socio.nombre}.pdf`,
         jsPDF: { unit: 'mm', format: [90, 150], orientation: 'portrait' }
     };
-    log(`Generando ticket para ${socio.nombre}...`, "action");
     html2pdf().set(opt).from(ticketEl).save();
 }
 
@@ -122,33 +109,30 @@ async function loadData() {
         if(input) input.value = savedToken;
     }
     try {
-        const res = await fetch('data.json?t=' + Date.now());
-        if (res.ok) {
-            const newData = await res.json();
-            REMOTE_DB = JSON.parse(JSON.stringify(newData)); 
+        const resVentas = await fetch(`${CONFIG.files.ventas}?t=${Date.now()}`);
+        const resCompras = await fetch(`${CONFIG.files.compras}?t=${Date.now()}`);
+        
+        if (resVentas.ok && resCompras.ok) {
+            const newData = await resVentas.json();
+            REMOTE_DB = JSON.parse(JSON.stringify(newData));
+            COMPRAS_DB = await resCompras.json();
+            
             updateStatusIcon('online');
+            localStorage.setItem("cache_ventas", JSON.stringify(newData));
+            localStorage.setItem("cache_compras", JSON.stringify(COMPRAS_DB));
+
             if (!PENDING_CHANGES) {
                 DB = JSON.parse(JSON.stringify(newData));
                 UI.refresh();
             }
         } else {
-            updateStatusIcon('offline');
-            const local = localStorage.getItem("dulce_json");
-            if(local) {
-                const data = JSON.parse(local);
-                DB = data;
-                REMOTE_DB = data;
-            }
-            UI.refresh();
+            throw new Error("Offline");
         }
     } catch (e) {
         updateStatusIcon('offline');
-        const local = localStorage.getItem("dulce_json");
-        if(local) {
-            const data = JSON.parse(local);
-            DB = data;
-            REMOTE_DB = data;
-        }
+        DB = JSON.parse(localStorage.getItem("cache_ventas")) || { socios: [], productos: [] };
+        COMPRAS_DB = JSON.parse(localStorage.getItem("cache_compras")) || { compras: [] };
+        REMOTE_DB = JSON.parse(JSON.stringify(DB));
         UI.refresh();
     }
 }
@@ -156,35 +140,32 @@ async function loadData() {
 const App = {
     save: async () => {
         const token = document.getElementById('gh-token').value;
-        if(!token) {
-            log("Error: Token no ingresado.", "error");
-            showToast("Falta Token", "error");
-            return;
-        }
-        log("Subiendo lote de cambios a GitHub...", "action");
+        if(!token) return showToast("Falta Token", "error");
+        
+        log("Sincronizando con la nube...", "action");
         localStorage.setItem(CONFIG.token_key, token);
+        
         try {
-            const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/dispatches`, {
+            const resV = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/dispatches`, {
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                body: JSON.stringify({ 
-                    event_type: 'update_db', 
-                    client_payload: { json_data: DB }
-                })
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ event_type: 'update_db', client_payload: { json_data: DB } })
             });
-            if(res.status === 204) {
+
+            const resC = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/dispatches`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ event_type: 'update_compras', client_payload: { json_data: COMPRAS_DB } })
+            });
+
+            if(resV.status === 204 && resC.status === 204) {
                 PENDING_CHANGES = false;
                 REMOTE_DB = JSON.parse(JSON.stringify(DB));
-                localStorage.setItem("dulce_json", JSON.stringify(DB));
-                log("ÉXITO: Nube actualizada.", "info");
+                localStorage.setItem("cache_ventas", JSON.stringify(DB));
+                localStorage.setItem("cache_compras", JSON.stringify(COMPRAS_DB));
+                log("ÉXITO: Sincronización completa.", "info");
                 showToast("Sincronizado");
                 UI.refresh();
-            } else {
-                log(`Error API: ${res.status}`, "error");
-                showToast("Error de Token", "error");
             }
         } catch (e) { 
             log("Error de conexión.", "error");
@@ -193,130 +174,120 @@ const App = {
     },
     vender(id) {
         const p = DB.productos.find(x => x.id === id);
-        const qtyInput = document.getElementById(`qty-${id}`);
-        const qty = parseInt(qtyInput.value);
+        const qty = parseInt(document.getElementById(`qty-${id}`).value);
         if(p && (p.stock - p.vendidos) >= qty) {
             p.vendidos += qty;
             PENDING_CHANGES = true;
             UI.refresh();
-            showToast("Venta en lista");
+            showToast("Venta registrada");
         } else {
             showToast("Sin stock suficiente", "error");
+        }
+    },
+    registrarCompra() {
+        const desc = document.getElementById("buy-desc").value;
+        const monto = parseFloat(document.getElementById("buy-amount").value);
+        if(desc && monto) {
+            COMPRAS_DB.compras.push({ id: Date.now(), fecha: new Date().toLocaleDateString(), desc, monto });
+            PENDING_CHANGES = true;
+            document.getElementById("buy-desc").value = "";
+            document.getElementById("buy-amount").value = "";
+            UI.refresh();
+            showToast("Compra registrada");
         }
     }
 };
 
 const Config = {
     addProduct() {
-        const nInput = document.getElementById("new-p-name");
-        const sInput = document.getElementById("new-p-stock");
-        const pInput = document.getElementById("new-p-price");
-        if(nInput.value && sInput.value && pInput.value) {
-            DB.productos.push({ id: Date.now(), nombre: nInput.value, stock: parseInt(sInput.value), precio: parseFloat(pInput.value), vendidos: 0 });
-            PENDING_CHANGES = true;
-            UI.refresh();
-            nInput.value = ""; sInput.value = ""; pInput.value = "";
+        const n = document.getElementById("new-p-name"), s = document.getElementById("new-p-stock"), p = document.getElementById("new-p-price");
+        if(n.value && s.value && p.value) {
+            DB.productos.push({ id: Date.now(), nombre: n.value, stock: parseInt(s.value), precio: parseFloat(p.value), vendidos: 0 });
+            PENDING_CHANGES = true; UI.refresh();
+            n.value = ""; s.value = ""; p.value = "";
             showToast("Producto en lista");
         }
     },
     addSocio() {
-        const nInput = document.getElementById("new-socio-name");
-        const mInput = document.getElementById("new-socio-money");
-        if(nInput.value && mInput.value) {
-            DB.socios.push({ id: Date.now(), nombre: nInput.value, aporte: parseFloat(mInput.value) });
-            PENDING_CHANGES = true;
-            UI.refresh();
-            nInput.value = ""; mInput.value = "";
+        const n = document.getElementById("new-socio-name"), m = document.getElementById("new-socio-money");
+        if(n.value && m.value) {
+            DB.socios.push({ id: Date.now(), nombre: n.value, aporte: parseFloat(m.value) });
+            PENDING_CHANGES = true; UI.refresh();
+            n.value = ""; m.value = "";
             showToast("Socio en lista");
         }
     },
     editItem(type, id, field, value) {
         const item = type === 'p' ? DB.productos.find(x => x.id === id) : DB.socios.find(x => x.id === id);
-        if (item) {
-            item[field] = (field === 'nombre') ? value : parseFloat(value);
-            PENDING_CHANGES = true;
-            UI.refresh();
-        }
+        if (item) { item[field] = (field === 'nombre') ? value : parseFloat(value); PENDING_CHANGES = true; UI.refresh(); }
     },
     remove(type, id) {
         if(type === 'p') DB.productos = DB.productos.filter(x => x.id !== id);
         else DB.socios = DB.socios.filter(x => x.id !== id);
-        PENDING_CHANGES = true;
-        UI.refresh();
+        PENDING_CHANGES = true; UI.refresh();
         showToast("Eliminado");
     }
 };
 
 const UI = {
     currentChartType: 'bar',
-    setChartType(type) {
-        this.currentChartType = type;
-        this.updateChart();
-    },
+    setChartType(type) { this.currentChartType = type; this.updateChart(); },
     refresh() {
         const ing = REMOTE_DB.productos.reduce((s, p) => s + (p.vendidos * p.precio), 0);
         const inv = REMOTE_DB.socios.reduce((s, x) => s + x.aporte, 0);
+        const gas = COMPRAS_DB.compras.reduce((s, x) => s + x.monto, 0);
+
         document.getElementById("v-ingresos").textContent = `$${ing}`;
-        document.getElementById("v-inversion").textContent = `$${inv}`;
-        document.getElementById("v-ganancia").textContent = `$${ing - inv}`;
+        document.getElementById("v-gastos").textContent = `$${gas}`;
+        document.getElementById("v-ganancia").textContent = `$${ing - inv - gas}`;
+        
         const table = document.getElementById("v-inventory");
         if(table) {
-            table.innerHTML = "";
-            REMOTE_DB.productos.forEach(p => {
+            table.innerHTML = REMOTE_DB.productos.map(p => {
                 const r = p.stock - p.vendidos;
-                table.innerHTML += `<tr>
+                return `<tr>
                     <td>${p.nombre}</td>
                     <td>$${p.precio}</td>
                     <td style="color:${r < 5 ? 'var(--accent2)' : 'var(--accent3)'}">${r}</td>
-                    <td><input type="number" id="qty-${p.id}" style="width:45px; background:var(--surface2); color:#fff; border:none; padding:6px; border-radius:5px;" value="1"></td>
+                    <td><input type="number" id="qty-${p.id}" style="width:45px; background:var(--surface2); color:#fff; border:none; border-radius:5px;" value="1"></td>
                     <td><button class="btn btn-accent" onclick="App.vender(${p.id})"><i class="fa-solid fa-cart-shopping"></i></button></td>
                 </tr>`;
-            });
+            }).join('');
         }
+
         const adminProdList = document.getElementById("admin-productos-list");
         if(adminProdList) {
             adminProdList.innerHTML = DB.productos.map(p => `
                 <div class="admin-list-item">
-                    <div class="admin-item-info">
-                        <span class="admin-item-label">Producto</span>
-                        <input type="text" class="admin-list-input" value="${p.nombre}" onchange="Config.editItem('p', ${p.id}, 'nombre', this.value)">
-                    </div>
+                    <div class="admin-item-info"><input type="text" class="admin-list-input" value="${p.nombre}" onchange="Config.editItem('p', ${p.id}, 'nombre', this.value)"></div>
                     <div class="admin-item-inputs">
-                        <div class="admin-field-group">
-                            <span class="admin-item-label">Stock</span>
-                            <input type="number" class="admin-list-input" style="width:60px" value="${p.stock}" onchange="Config.editItem('p', ${p.id}, 'stock', this.value)">
-                        </div>
-                        <div class="admin-field-group">
-                            <span class="admin-item-label">Precio</span>
-                            <input type="number" class="admin-list-input" style="width:70px" value="${p.precio}" onchange="Config.editItem('p', ${p.id}, 'precio', this.value)">
-                        </div>
+                        <input type="number" class="admin-list-input" style="width:60px" value="${p.stock}" onchange="Config.editItem('p', ${p.id}, 'stock', this.value)">
+                        <input type="number" class="admin-list-input" style="width:70px" value="${p.precio}" onchange="Config.editItem('p', ${p.id}, 'precio', this.value)">
                     </div>
-                    <div class="admin-item-actions">
-                        <div class="btn-delete" onclick="Config.remove('p', ${p.id})"><i class="fa-solid fa-trash"></i></div>
-                    </div>
-                </div>
-            `).join('');
+                    <div class="admin-item-actions"><div class="btn-delete" onclick="Config.remove('p', ${p.id})"><i class="fa-solid fa-trash"></i></div></div>
+                </div>`).join('');
         }
+
+        const buyList = document.getElementById("compras-list");
+        if(buyList) {
+            buyList.innerHTML = COMPRAS_DB.compras.map(c => `
+                <div class="admin-list-item">
+                    <span>${c.fecha} - ${c.desc}</span>
+                    <strong>$${c.monto}</strong>
+                </div>`).join('');
+        }
+
         const adminSocioList = document.getElementById("admin-socios-list");
         if(adminSocioList) {
             adminSocioList.innerHTML = DB.socios.map(s => `
                 <div class="admin-list-item">
-                    <div class="admin-item-info">
-                        <span class="admin-item-label">Socio</span>
-                        <input type="text" class="admin-list-input" value="${s.nombre}" onchange="Config.editItem('s', ${s.id}, 'nombre', this.value)">
-                    </div>
-                    <div class="admin-item-inputs">
-                        <div class="admin-field-group">
-                            <span class="admin-item-label">Inversión</span>
-                            <input type="number" class="admin-list-input" style="width:80px" value="${s.aporte}" onchange="Config.editItem('s', ${s.id}, 'aporte', this.value)">
-                        </div>
-                    </div>
+                    <div class="admin-item-info"><input type="text" class="admin-list-input" value="${s.nombre}" onchange="Config.editItem('s', ${s.id}, 'nombre', this.value)"></div>
+                    <input type="number" class="admin-list-input" style="width:80px" value="${s.aporte}" onchange="Config.editItem('s', ${s.id}, 'aporte', this.value)">
                     <div class="admin-item-actions">
-                        <div onclick="exportSocioTicket(${s.id})" style="background:rgba(110,255,197,0.1); color:var(--accent3); width:35px; height:35px; display:flex; align-items:center; justify-content:center; border-radius:8px; cursor:pointer; margin-right:8px;"><i class="fa-solid fa-receipt"></i></div>
+                        <div class="btn-ticket" onclick="exportSocioTicket(${s.id})"><i class="fa-solid fa-receipt"></i></div>
                         <div class="btn-delete" onclick="Config.remove('s', ${s.id})"><i class="fa-solid fa-trash"></i></div>
                     </div>
-                </div>
-            `).join('');
+                </div>`).join('');
         }
         this.updateChart();
     },
@@ -327,18 +298,20 @@ const UI = {
         if(chart) chart.destroy();
         const labels = REMOTE_DB.productos.map(p => p.nombre);
         const data = REMOTE_DB.productos.map(p => p.vendidos);
-        const colors = ['#f7c94b', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeead'];
         chart = new Chart(ctx, {
             type: this.currentChartType === 'bar-h' ? 'bar' : this.currentChartType,
             data: {
                 labels: labels,
-                datasets: [{ label: 'Ventas', data: data, backgroundColor: this.currentChartType === 'pie' ? colors : '#f7c94b', borderRadius: this.currentChartType === 'pie' ? 0 : 6 }]
+                datasets: [{ 
+                    label: 'Ventas', data: data, 
+                    backgroundColor: this.currentChartType === 'pie' ? ['#f7c94b', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeead'] : '#f7c94b',
+                    borderRadius: 6 
+                }]
             },
             options: { 
                 indexAxis: this.currentChartType === 'bar-h' ? 'y' : 'x',
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: this.currentChartType === 'pie' } },
-                scales: this.currentChartType === 'pie' ? { y: { display: false }, x: { display: false } } : { y: { beginAtZero: true, grid: { color: '#252a3a' } }, x: { grid: { display: false } } } 
+                maintainAspectRatio: false,
+                plugins: { legend: { display: this.currentChartType === 'pie' } }
             }
         });
     }
