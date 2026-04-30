@@ -1,0 +1,22 @@
+name: Actualizar Base de Datos Traficodedulces
+on:
+  repository_dispatch:
+    types: [update_db]
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Escribir JSON
+        run: |
+          echo '${{ github.event.client_payload.json_data }}' > data.json
+          
+      - name: Commit y Push
+        run: |
+          git config --global user.name "DulceBot"
+          git config --global user.email "bot@gatosauriocrack.com"
+          git add data.json
+          git commit -m "Actualización de inventario automática"
+          git push
