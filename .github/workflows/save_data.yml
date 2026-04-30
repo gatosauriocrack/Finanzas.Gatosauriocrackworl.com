@@ -7,31 +7,30 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
-    # CRÍTICO: Esto da el permiso de escritura que faltaba en el error 403
     permissions:
       contents: write
     
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Escribir JSON
         run: |
-          # Usamos un archivo temporal para evitar problemas con caracteres especiales
           echo '${{ toJson(github.event.client_payload.json_data) }}' > data.json
           
-      - name: Commit y Push
+      - name: Commit y Push con Reintento
         run: |
-          # Configuración local para mayor seguridad
           git config --local user.name "Meli Admin Bot"
           git config --local user.email "action@github.com"
           
           git add data.json
           
-          # Solo hace commit si hay cambios reales en el archivo
           if ! git diff --cached --quiet; then
             git commit -m "Admin: Actualización de inventario automática"
+            git pull --rebase origin main
             git push
           else
-            echo "Sin cambios detectados en el JSON."
+            echo "Sin cambios detectados."
           fi
