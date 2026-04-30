@@ -1,4 +1,5 @@
 name: Actualizar Base de Datos Traficodedulces
+
 on:
   repository_dispatch:
     types: [update_db]
@@ -6,19 +7,31 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+    # CRÍTICO: Esto da el permiso de escritura que faltaba en el error 403
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
       
       - name: Escribir JSON
         run: |
-          echo '${{ github.event.client_payload.json_data }}' > data.json
+          # Usamos un archivo temporal para evitar problemas con caracteres especiales
+          echo '${{ toJson(github.event.client_payload.json_data) }}' > data.json
           
       - name: Commit y Push
         run: |
-          git config --global user.name "DulceBot"
-          git config --global user.email "bot@gatosauriocrack.com"
+          # Configuración local para mayor seguridad
+          git config --local user.name "Meli Admin Bot"
+          git config --local user.email "action@github.com"
+          
           git add data.json
-          # El condicional || exit 0 evita que el bot marque error si los datos son iguales a los anteriores
-          git commit -m "Actualización de inventario automática" || exit 0
-          git push
+          
+          # Solo hace commit si hay cambios reales en el archivo
+          if ! git diff --cached --quiet; then
+            git commit -m "Admin: Actualización de inventario automática"
+            git push
+          else
+            echo "Sin cambios detectados en el JSON."
+          fi
