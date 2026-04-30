@@ -7,7 +7,8 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
       
       - name: Escribir JSON
         run: |
@@ -18,5 +19,6 @@ jobs:
           git config --global user.name "DulceBot"
           git config --global user.email "bot@gatosauriocrack.com"
           git add data.json
-          git commit -m "Actualización de inventario automática"
+          # El condicional || exit 0 evita que el bot marque error si los datos son iguales a los anteriores
+          git commit -m "Actualización de inventario automática" || exit 0
           git push
